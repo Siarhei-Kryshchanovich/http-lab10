@@ -38,4 +38,10 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserDtoById(id));
     }
 
+    @GetMapping("/users/{id}/secure")
+    @org.springframework.security.access.prepost.PreAuthorize("@authz.isSelf(authentication, #id) or hasRole('ADMIN')")
+    public ResponseEntity<?> getUserSecure(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserDtoById(id));
+    }
+
 }

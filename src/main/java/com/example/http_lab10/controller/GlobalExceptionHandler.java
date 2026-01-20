@@ -65,4 +65,29 @@ public class GlobalExceptionHandler {
                 "message", ex.getMessage()
         ));
     }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<?> handleDenied(org.springframework.security.access.AccessDeniedException ex,
+                                          HttpServletRequest req) {
+        return ResponseEntity.status(403).body(Map.of(
+                "timestamp", Instant.now().toString(),
+                "status", 403,
+                "error", "Forbidden",
+                "path", req.getRequestURI(),
+                "message", "Access denied"
+        ));
+    }
+
+    @ExceptionHandler(org.springframework.security.web.csrf.CsrfException.class)
+    public ResponseEntity<?> handleCsrf(org.springframework.security.web.csrf.CsrfException ex,
+                                        HttpServletRequest req) {
+        return ResponseEntity.status(403).body(Map.of(
+                "timestamp", Instant.now().toString(),
+                "status", 403,
+                "error", "Forbidden",
+                "path", req.getRequestURI(),
+                "message", "CSRF token missing or invalid"
+        ));
+    }
+
 }

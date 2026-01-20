@@ -29,6 +29,7 @@ public class UserService {
         u.setUsername(req.getUsername());
         u.setEmail(req.getEmail());
         u.setPassword(passwordEncoder.encode(req.getPassword()));
+        u.setRole(com.example.http_lab10.model.Role.USER);
 
         return userRepository.save(u);
     }
