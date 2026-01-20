@@ -3,11 +3,14 @@ package com.example.http_lab10.model.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import com.example.http_lab10.validation.ValidUsername;
+
 
 public class CreateUserRequest {
 
     @NotBlank
     @Size(min = 2, max = 50)
+    @ValidUsername
     private String username;
 
     @NotBlank

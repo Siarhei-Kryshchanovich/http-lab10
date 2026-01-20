@@ -6,6 +6,8 @@ import com.example.http_lab10.model.dto.LoginRequest;
 import com.example.http_lab10.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.example.http_lab10.exception.NotFoundException;
+import java.util.Map;
 
 @Service
 public class UserService {
@@ -40,5 +42,16 @@ public class UserService {
         }
 
         return u;
+    }
+
+    public Map<String, Object> getUserDtoById(Long id) {
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        return Map.of(
+                "id", u.getId(),
+                "username", u.getUsername(),
+                "email", u.getEmail()
+        );
     }
 }
