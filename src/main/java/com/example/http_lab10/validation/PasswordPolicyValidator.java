@@ -14,7 +14,7 @@ public class PasswordPolicyValidator implements ConstraintValidator<ValidPasswor
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         if (value == null) return false;
-
+        if (value.contains(" ")) return false;
         if (value.length() < 10 || value.length() > 100) return false;
 
         String lower = value.toLowerCase();

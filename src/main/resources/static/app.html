@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>HTTP Lab – JWT Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 12px; }
+        input, button, textarea { padding: 8px; margin: 4px 0; width: 100%; box-sizing: border-box; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; }
+        pre { background: #f6f6f6; padding: 12px; border-radius: 8px; overflow: auto; }
+        small { color: #666; }
+    </style>
+</head>
+<body>
+<h2>JWT REST Client (localhost)</h2>
+<small>Refresh token is HTTP-only cookie; access token stored in localStorage.</small>
+
+<div class="row">
+    <div class="card">
+        <h3>Register</h3>
+        <input id="r_username" placeholder="username" value="TestUser1">
+        <input id="r_email" placeholder="email" value="testuser1@mail.com">
+        <input id="r_password" placeholder="password" value="Strong#Pass123" type="password">
+        <button onclick="register()">POST /auth/register</button>
+    </div>
+
+    <div class="card">
+        <h3>Login</h3>
+        <input id="l_email" placeholder="email" value="testuser1@mail.com">
+        <input id="l_password" placeholder="password" value="Strong#Pass123" type="password">
+        <button onclick="login()">POST /auth/login</button>
+        <button onclick="logout()">Clear local token</button>
+        <div><small>Access token: <span id="token_status"></span></small></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Auth helpers</h3>
+    <button onclick="me()">GET /api/me</button>
+    <button onclick="refresh()">POST /auth/refresh (uses cookie)</button>
+</div>
+
+<div class="card">
+    <h3>Cars</h3>
+    <div class="row">
+        <div>
+            <input id="c_brand" placeholder="brand" value="Toyota">
+            <input id="c_model" placeholder="model" value="Corolla">
+            <input id="c_vin" placeholder="vin" value="JTDBR32E72012345">
+            <input id="c_year" placeholder="year" value="2015" type="number">
+            <button onclick="createCar()">POST /api/cars</button>
+        </div>
+        <div>
+            <input id="car_id" placeholder="car id (for get/update/delete)" value="1" type="number">
+            <button onclick="listCars()">GET /api/cars</button>
+            <button onclick="getCar()">GET /api/cars/{id}</button>
+            <button onclick="updateCar()">PUT /api/cars/{id}</button>
+            <button onclick="deleteCar()">DELETE /api/cars/{id}</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h4>Search my cars by brand prefix</h4>
+        <input id="brand_prefix" placeholder="brandPrefix" value="To">
+        <button onclick="searchCars()">GET /api/cars/search?brandPrefix=</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Response</h3>
+    <pre id="out"></pre>
+</div>
+
+<script>
+    const out = document.getElementById('out');
+    const tokenStatus = document.getElementById('token_status');
+
+    function setOut(obj) {
+      out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    }
+
+    function getToken() {
+      return localStorage.getItem('access_token');
+    }
+    function setToken(t) {
+      if (t) localStorage.setItem('access_token', t);
+      updateTokenStatus();
+    }
+    function clearToken() {
+      localStorage.removeItem('access_token');
+      updateTokenStatus();
+    }
+    function updateTokenStatus() {
+      const t = getToken();
+      tokenStatus.textContent = t ? (t.slice(0, 18) + '...') : '(none)';
+    }
+    updateTokenStatus();
+
+    async function request(method, path, body) {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = getToken();
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+
+      const res = await fetch(path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: 'same-origin' // send cookies to same-origin
+      });
+
+      const text = await res.text();
+      let data;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+
+      setOut({ status: res.status, data });
+      return { status: res.status, data, res };
+    }
+
+    async function register() {
+      const body = {
+        username: document.getElementById('r_username').value,
+        email: document.getElementById('r_email').value,
+        password: document.getElementById('r_password').value
+      };
+      await request('POST', '/auth/register', body);
+    }
+
+    async function login() {
+      const body = {
+        email: document.getElementById('l_email').value,
+        password: document.getElementById('l_password').value
+      };
+      const r = await request('POST', '/auth/login', body);
+      if (r.status === 200 && r.data && r.data.token) {
+        setToken(r.data.token);
+      }
+    }
+
+    function logout() {
+      clearToken();
+      setOut('Local access token cleared. (Refresh cookie, if any, is HTTP-only.)');
+    }
+
+    async function me() {
+      await request('GET', '/api/me');
+    }
+
+    async function refresh() {
+      const r = await request('POST', '/auth/refresh');
+      if (r.status === 200 && r.data && r.data.token) {
+        setToken(r.data.token);
+      }
+    }
+
+    async function createCar() {
+      const body = {
+        brand: document.getElementById('c_brand').value,
+        model: document.getElementById('c_model').value,
+        vin: document.getElementById('c_vin').value,
+        year: Number(document.getElementById('c_year').value)
+      };
+      await request('POST', '/api/cars', body);
+    }
+
+    async function listCars() {
+      await request('GET', '/api/cars');
+    }
+
+    async function getCar() {
+      const id = document.getElementById('car_id').value;
+      await request('GET', '/api/cars/' + id);
+    }
+
+    async function updateCar() {
+      const id = document.getElementById('car_id').value;
+      const body = {
+        brand: document.getElementById('c_brand').value,
+        model: document.getElementById('c_model').value,
+        year: Number(document.getElementById('c_year').value)
+      };
+      await request('PUT', '/api/cars/' + id, body);
+    }
+
+    async function deleteCar() {
+      const id = document.getElementById('car_id').value;
+      await request('DELETE', '/api/cars/' + id);
+    }
+
+    async function searchCars() {
+      const p = encodeURIComponent(document.getElementById('brand_prefix').value);
+      await request('GET', '/api/cars/search?brandPrefix=' + p);
+    }
+</script>
+</body>
+</html>

@@ -1,13 +1,12 @@
 package com.example.http_lab10.service;
 
+import com.example.http_lab10.exception.NotFoundException;
+import com.example.http_lab10.model.Role;
 import com.example.http_lab10.model.User;
 import com.example.http_lab10.model.dto.CreateUserRequest;
-import com.example.http_lab10.model.dto.LoginRequest;
 import com.example.http_lab10.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.example.http_lab10.exception.NotFoundException;
-import java.util.Map;
 
 @Service
 public class UserService {
@@ -22,37 +21,31 @@ public class UserService {
 
     public User createUser(CreateUserRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new IllegalArgumentException("Email already in use");
         }
 
         User u = new User();
         u.setUsername(req.getUsername());
         u.setEmail(req.getEmail());
         u.setPassword(passwordEncoder.encode(req.getPassword()));
-        u.setRole(com.example.http_lab10.model.Role.USER);
+        u.setRole(Role.USER);
 
         return userRepository.save(u);
     }
 
-    public User authenticate(LoginRequest req) {
-        User u = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new SecurityException("Invalid credentials"));
-
-        if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
-            throw new SecurityException("Invalid credentials");
-        }
-
-        return u;
-    }
-
-    public Map<String, Object> getUserDtoById(Long id) {
-        User u = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        return Map.of(
+    public Object getUserDtoById(Long id) {
+        User u = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
+        return java.util.Map.of(
                 "id", u.getId(),
                 "username", u.getUsername(),
-                "email", u.getEmail()
+                "email", u.getEmail(),
+                "role", u.getRole().name()
         );
+    }
+
+    public com.example.http_lab10.security.CustomUserDetails loadCustomUserDetailsById(Long id) {
+        com.example.http_lab10.model.User u = userRepository.findById(id)
+                .orElseThrow(() -> new com.example.http_lab10.exception.NotFoundException("User not found"));
+        return new com.example.http_lab10.security.CustomUserDetails(u);
     }
 }

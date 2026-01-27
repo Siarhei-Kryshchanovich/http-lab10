@@ -7,6 +7,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import com.example.http_lab10.exception.NotFoundException;
 import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.example.http_lab10.security.SuspiciousRequestTracker;
 
 import java.time.Instant;
 import java.util.List;
@@ -14,6 +17,42 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final SuspiciousRequestTracker tracker;
+
+    public GlobalExceptionHandler(SuspiciousRequestTracker tracker) {
+        this.tracker = tracker;
+    }
+
+
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<?> handleBadCredentials(
+            org.springframework.security.authentication.BadCredentialsException ex,
+            jakarta.servlet.http.HttpServletRequest req
+    ) {
+        return ResponseEntity.status(401).body(java.util.Map.of(
+                "timestamp", java.time.Instant.now().toString(),
+                "status", 401,
+                "error", "Unauthorized",
+                "path", req.getRequestURI(),
+                "message", "Invalid credentials"
+        ));
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<?> handleAuth(
+            org.springframework.security.core.AuthenticationException ex,
+            jakarta.servlet.http.HttpServletRequest req
+    ) {
+        return ResponseEntity.status(401).body(java.util.Map.of(
+                "timestamp", java.time.Instant.now().toString(),
+                "status", 401,
+                "error", "Unauthorized",
+                "path", req.getRequestURI(),
+                "message", "Authentication failed"
+        ));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
@@ -23,6 +62,12 @@ public class GlobalExceptionHandler {
                         "message", fe.getDefaultMessage() == null ? "Invalid value" : fe.getDefaultMessage()
                 ))
                 .toList();
+
+        String ip = req.getRemoteAddr();
+        boolean suspicious = tracker.recordBadRequest(ip);
+        if (suspicious) {
+            log.warn("SUSPICIOUS many_400 ip={} path={}", ip, req.getRequestURI());
+        }
 
         return ResponseEntity.badRequest().body(Map.of(
                 "timestamp", Instant.now().toString(),
@@ -35,14 +80,29 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleBadRequest(IllegalArgumentException ex, HttpServletRequest req) {
-        return ResponseEntity.badRequest().body(Map.of(
+        int status = req.getRequestURI().startsWith("/auth/refresh") ? 401 : 400;
+        String err = status == 401 ? "Unauthorized" : "Bad Request";
+
+        return ResponseEntity.status(status).body(Map.of(
                 "timestamp", Instant.now().toString(),
-                "status", 400,
-                "error", "Bad Request",
+                "status", status,
+                "error", err,
                 "path", req.getRequestURI(),
                 "message", ex.getMessage()
         ));
     }
+
+
+//    @ExceptionHandler(Exception.class)
+//    public ResponseEntity<?> handleServerError(Exception ex, HttpServletRequest req) {
+//        return ResponseEntity.status(500).body(Map.of(
+//                "timestamp", Instant.now().toString(),
+//                "status", 500,
+//                "error", "Internal Server Error",
+//                "path", req.getRequestURI(),
+//                "message", "Unexpected error"
+//        ));
+//    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleServerError(Exception ex, HttpServletRequest req) {
@@ -51,7 +111,7 @@ public class GlobalExceptionHandler {
                 "status", 500,
                 "error", "Internal Server Error",
                 "path", req.getRequestURI(),
-                "message", "Unexpected error"
+                "message", ex.getClass().getSimpleName() + ": " + (ex.getMessage() == null ? "" : ex.getMessage())
         ));
     }
 
