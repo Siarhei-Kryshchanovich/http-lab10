@@ -70,7 +70,7 @@ public class AuthController {
 
             ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                     .httpOnly(true)
-                    .secure(false)
+                    .secure(true)
                     .sameSite("Strict")
                     .path("/auth")
                     .maxAge(Duration.ofDays(refreshTtlDays))
@@ -111,7 +111,7 @@ public class AuthController {
 
         ResponseCookie cookie = ResponseCookie.from("refresh_token", rotated.newRefreshTokenRaw())
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .sameSite("Strict")
                 .path("/auth")
                 .maxAge(Duration.ofDays(refreshTtlDays))
@@ -130,7 +130,7 @@ public class AuthController {
 
         ResponseCookie clear = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .sameSite("Strict")
                 .path("/auth")
                 .maxAge(0)
