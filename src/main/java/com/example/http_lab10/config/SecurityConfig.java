@@ -1,6 +1,8 @@
 package com.example.http_lab10.config;
 
 import com.example.http_lab10.security.JwtAuthFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -8,40 +10,32 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+
 
 import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(                "/hello",
-                                "/error",
-                                "/app.html",
-                                "/",
-                                "/favicon.ico",
-                                "/css/**",
-                                "/js/**",
-                                "/images/**",
-                                "/webjars/**",
-                                "/**/*.css",
-                                "/**/*.js",
-                                "/**/*.png",
-                                "/**/*.jpg",
-                                "/**/*.svg",
-                                "/**/*.ico").permitAll()
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers(
+                                "/auth/register",
+                                "/auth/login",
+                                "/auth/refresh",
+                                "/auth/logout",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
@@ -66,13 +60,13 @@ public class SecurityConfig {
                             response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"path\":\"" + request.getRequestURI() + "\"}");
                         })
                 )
-
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, org.springframework.security.web.authentication.AnonymousAuthenticationFilter.class);
 
         http.headers(h -> h
-                .contentTypeOptions(cto -> {}) // X-Content-Type-Options: nosniff
-                .frameOptions(fo -> fo.deny()) // X-Frame-Options: DENY
-                .referrerPolicy(rp -> rp.policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .contentTypeOptions(cto -> {})
+                .frameOptions(fo -> fo.deny())
+                .referrerPolicy(rp -> rp.policy(
+                        org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                         "default-src 'self'; " +
                                 "script-src 'self' 'unsafe-inline'; " +

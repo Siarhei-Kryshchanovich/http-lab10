@@ -28,7 +28,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+        var currentAuth = SecurityContextHolder.getContext().getAuthentication();
+        boolean shouldTryJwt = (currentAuth == null)
+                || !currentAuth.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(currentAuth.getPrincipal()));
+
+        if (shouldTryJwt) {
             String auth = request.getHeader("Authorization");
             if (auth != null && auth.startsWith("Bearer ")) {
                 String token = auth.substring(7);
